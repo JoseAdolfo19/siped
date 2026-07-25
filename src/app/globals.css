@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { @apply bg-gray-50 text-gray-900; }
+
+@media print {
+  nav, button, a[download] { display: none !important; }
+  body { background: white !important; }
+  .no-print { display: none !important; }
+}
+
+@layer base {
+  :root {
+    --background: 255 255 255;
+    --foreground: 23 23 23;
+    --card: 255 255 255;
+    --card-foreground: 23 23 23;
+    --popover: 255 255 255;
+    --popover-foreground: 23 23 23;
+    --primary: 124 58 237;
+    --primary-foreground: 255 255 255;
+    --secondary: 245 245 245;
+    --secondary-foreground: 23 23 23;
+    --muted: 245 245 245;
+    --muted-foreground: 115 115 115;
+    --accent: 245 245 245;
+    --accent-foreground: 23 23 23;
+    --destructive: 239 68 68;
+    --border: 229 229 229;
+    --input: 229 229 229;
+    --ring: 124 58 237;
+    --radius: 0.625rem;
+  }
+  * { @apply border-border; }
+}
