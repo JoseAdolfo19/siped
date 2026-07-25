@@ -16,6 +16,8 @@ export default function Navbar() {
         <Link href="/dashboard" className="text-xl font-bold text-primary-600">SIPED</Link>
         <div className="flex items-center gap-4">
           <Link href="/planificaciones" className="text-sm text-gray-600 hover:text-primary-600">Planificaciones</Link>
+          <Link href="/evaluacion" className="text-sm text-gray-600 hover:text-primary-600">Evaluación</Link>
+          <Link href="/materiales" className="text-sm text-gray-600 hover:text-primary-600">Materiales</Link>
           {user?.planType === "admin" && (
             <Link href={isAdminPage ? "/dashboard" : "/admin"} className="text-sm text-gray-600 hover:text-primary-600">{isAdminPage ? "Dashboard" : "Admin"}</Link>
           )}

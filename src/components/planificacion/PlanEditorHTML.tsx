@@ -78,22 +78,29 @@ th,td { border: 1px solid #000; padding: 5px; text-align: left; vertical-align: 
   <table>
     <thead>
       <tr>
-        <th style="width:22%;{{estilo_th}}">COMPETENCIAS</th>
-        <th style="width:26%;{{estilo_th}}">DESEMPEÑOS 1°</th>
-        <th style="width:26%;{{estilo_th}}">DESEMPEÑOS 2°</th>
-        <th style="width:26%;{{estilo_th}}">CRITERIOS DE EVALUACIÓN</th>
+        <th style="width:18%;{{estilo_th}}">COMPETENCIAS</th>
+        <th style="width:18%;{{estilo_th}}">CAPACIDADES</th>
+        <th style="width:22%;{{estilo_th}}">DESEMPEÑOS 1°</th>
+        <th style="width:22%;{{estilo_th}}">DESEMPEÑOS 2°</th>
+        <th style="width:20%;{{estilo_th}}">CRITERIOS DE EVALUACIÓN</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td style="{{estilo_celda}}">{{competencias}}</td>
+        <td style="{{estilo_celda}}">{{capacidades}}</td>
         <td style="{{estilo_celda}}">{{desempenios_1}}</td>
         <td style="{{estilo_celda}}">{{desempenios_2}}</td>
         <td style="{{estilo_celda}}">{{criterios_evaluacion}}</td>
       </tr>
       <tr>
         <td style="{{estilo_celda}}"><strong>Gestiona su aprendizaje de manera autónoma</strong><br/><br/>Define metas de aprendizaje.<br/>Organiza acciones estratégicas.<br/>Monitorea y ajusta su desempeño.</td>
-        <td style="{{estilo_celda}}" colspan="3">{{gestion_aprendizaje}}</td>
+        <td style="{{estilo_celda}}" colspan="4">{{gestion_aprendizaje}}</td>
+      </tr>
+      <tr>
+        <td colspan="5" style="background:#f0fdf4;border:1px solid #000;padding:5px;">
+          <strong>EVIDENCIA DE APRENDIZAJE:</strong> {{evidencia}}
+        </td>
       </tr>
     </tbody>
   </table>
@@ -262,9 +269,11 @@ export default function PlanEditorHTML({ plan }: { plan?: PlanData }) {
     duracion: duration || "",
     fecha: fecha || new Date().toLocaleDateString("es-PE"),
     competencias: competencies || "",
+    capacidades: capacities || "",
     desempenios_1: performance || "",
     desempenios_2: performance || "",
     criterios_evaluacion: purpose || "",
+    evidencia: evidence || "",
     gestion_aprendizaje: gestionAprendizaje || "",
     enfoque_nombre: "Orientación al bien común",
     enfoques: transversalApproaches || "",
