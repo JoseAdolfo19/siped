@@ -18,6 +18,10 @@ export default function Navbar() {
           <Link href="/planificaciones" className="text-sm text-gray-600 hover:text-primary-600">Planificaciones</Link>
           <Link href="/evaluacion" className="text-sm text-gray-600 hover:text-primary-600">Evaluación</Link>
           <Link href="/materiales" className="text-sm text-gray-600 hover:text-primary-600">Materiales</Link>
+          <Link href="/refuerzo" className="text-sm text-gray-600 hover:text-primary-600">Refuerzo</Link>
+          <Link href="/unidades" className="text-sm text-gray-600 hover:text-primary-600">Unidades</Link>
+          <Link href="/dashboard" className="text-sm text-gray-600 hover:text-primary-600">Dashboard</Link>
+          <Link href="/planes" className="text-sm text-gray-600 hover:text-primary-600">Planes</Link>
           {user?.planType === "admin" && (
             <Link href={isAdminPage ? "/dashboard" : "/admin"} className="text-sm text-gray-600 hover:text-primary-600">{isAdminPage ? "Dashboard" : "Admin"}</Link>
           )}

@@ -2,7 +2,9 @@
 
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { generarTemplate } from "@/lib/templates"
+import { CREDIT_COSTS } from "@/lib/credits"
 import RichTextEditor from "./RichTextEditor"
 
 const nivelLabel: Record<string, string> = { inicial: "Inicial", primaria: "Primaria", secundaria: "Secundaria" }
@@ -239,7 +241,11 @@ export default function PlanEditorHTML({ plan }: { plan?: PlanData }) {
   const [colorCelda, setColorCelda] = useState("#ffffff")
   const [loading, setLoading] = useState(false)
   const [autofilling, setAutofilling] = useState(false)
+  const [aiFilling, setAiFilling] = useState(false)
   const [error, setError] = useState("")
+  const { data: session } = useSession()
+  const [showConfirm, setShowConfirm] = useState<"pdf" | "word" | "pptx" | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const handleImage = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -319,6 +325,108 @@ export default function PlanEditorHTML({ plan }: { plan?: PlanData }) {
     setAutofilling(false)
   }, [level, subject, title])
 
+  const autoFillAI = useCallback(async () => {
+    if (!title.trim() || !subject.trim()) {
+      setError("Completa título y asignatura primero para autorellenar con IA")
+      return
+    }
+    setAiFilling(true)
+    setError("")
+    try {
+      const res = await fetch("/api/credits/deduct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "AUTO_FILL" }),
+      })
+      const creditData = await res.json()
+      if (!res.ok) {
+        setError(creditData.error === "Créditos insuficientes"
+          ? `Créditos insuficientes. Tienes ${creditData.credits}, necesitas ${CREDIT_COSTS.AUTO_FILL}.`
+          : creditData.error)
+        setAiFilling(false); return
+      }
+
+      const aiRes = await fetch("/api/ai/autofill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nivel: level, area: subject, titulo: title, grado: grade }),
+      })
+      const aiData = await aiRes.json()
+      if (!aiRes.ok) { setError(aiData.error); setAiFilling(false); return }
+
+      const d = aiData.data
+      if (d.competencies) setCompetencies(d.competencies)
+      if (d.capacities) setCapacities(d.capacities)
+      if (d.performance) setPerformance(d.performance)
+      if (d.purpose) setPurpose(d.purpose)
+      if (d.evidence) setEvidence(d.evidence)
+      if (d.transversalApproaches) setTransversalApproaches(d.transversalApproaches)
+      if (d.seqInicio) setSeqInicio(d.seqInicio)
+      if (d.seqDesarrollo) setSeqDesarrollo(d.seqDesarrollo)
+      if (d.seqDurante) setSeqDurante(d.seqDurante)
+      if (d.seqDespues) setSeqDespues(d.seqDespues)
+      if (d.seqCierre) setSeqCierre(d.seqCierre)
+      if (d.gestionAprendizaje) setGestionAprendizaje(d.gestionAprendizaje)
+      if (d.evaluationTechniques) setEvaluationTechniques(d.evaluationTechniques)
+      if (d.evaluationInstruments) setEvaluationInstruments(d.evaluationInstruments)
+      if (d.resources) setResources(d.resources)
+      if (d.reflections) setReflections(d.reflections)
+    } catch {
+      setError("Error de conexión con la IA")
+    }
+    setAiFilling(false)
+  }, [level, subject, title, grade])
+
+  const getActionName = (f: string) => f === "pdf" ? "EXPORT_PDF" : f === "word" ? "EXPORT_WORD" : "GENERATE_PPTX"
+
+  const handleExport = useCallback(async (format: "pdf" | "word" | "pptx") => {
+    setExporting(true)
+    try {
+      const res = await fetch("/api/credits/deduct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: getActionName(format) }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 402) {
+          setError(`Creditos insuficientes. Tienes ${data.credits}, necesitas ${data.cost}.`)
+        } else {
+          setError(data.error || "Error al procesar exportacion")
+        }
+        setExporting(false); setShowConfirm(null)
+        return
+      }
+
+      const html = renderHTML(templateHTML, { ...templateVals, pie_pagina: (templateVals.pie_pagina || "") + " | Generado por SIPED" })
+
+      const exportRes = await fetch(`/api/exportar/${format}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html, title: title || "Sesion de Aprendizaje" }),
+      })
+      if (!exportRes.ok) {
+        const err = await exportRes.json()
+        setError(err.error || "Error al exportar")
+        setExporting(false); setShowConfirm(null)
+        return
+      }
+
+      const blob = await exportRes.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${title || "sesion"}.${format}`
+      a.click()
+      URL.revokeObjectURL(url)
+      const remaining = exportRes.headers.get("X-Credits-Remaining") || data.credits
+      setError(`Exportado correctamente. Creditos restantes: ${remaining}`)
+    } catch {
+      setError("Error de conexion al exportar")
+    }
+    setExporting(false); setShowConfirm(null)
+  }, [templateHTML, templateVals, title])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true); setError("")
@@ -393,13 +501,21 @@ export default function PlanEditorHTML({ plan }: { plan?: PlanData }) {
         </FieldSection>
 
         {/* Auto-llenar */}
-        <div className="flex justify-center -mx-5 px-5">
+        <div className="flex justify-center -mx-5 px-5 gap-2">
           <button type="button" onClick={autoFill} disabled={autofilling}
-            className="w-full text-sm bg-gradient-to-r from-purple-600 to-cyan-500 text-white py-2.5 rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition shadow-md shadow-purple-200 flex items-center justify-center gap-2">
+            className="flex-1 text-sm bg-gradient-to-r from-purple-600 to-cyan-500 text-white py-2.5 rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition shadow-md shadow-purple-200 flex items-center justify-center gap-2">
             {autofilling ? (
-              <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generando planificación...</>
+              <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generando...</>
             ) : (
-              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> Auto-llenar con IA</>
+              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> Auto-llenar (plantillas)</>
+            )}
+          </button>
+          <button type="button" onClick={autoFillAI} disabled={aiFilling}
+            className="flex-1 text-sm bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-2.5 rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition shadow-md shadow-emerald-200 flex items-center justify-center gap-2">
+            {aiFilling ? (
+              <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> IA pensando...</>
+            ) : (
+              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> Auto-llenar (IA) {CREDIT_COSTS.AUTO_FILL}cr</>
             )}
           </button>
         </div>
@@ -457,7 +573,41 @@ export default function PlanEditorHTML({ plan }: { plan?: PlanData }) {
       <div className="w-8/12 overflow-y-auto bg-gradient-to-br from-gray-50/50 to-purple-50/20">
         <div className="sticky top-0 z-10 px-6 py-3 border-b bg-white/80 backdrop-blur-sm flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-600">📄 Vista previa</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-400">{session?.user?.credits ?? "?"} creditos</span>
+            <button type="button" onClick={() => setShowConfirm("pdf")} disabled={exporting}
+              className="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg font-medium transition disabled:opacity-50">
+              {exporting && showConfirm === "pdf" ? "..." : "PDF"}
+            </button>
+            <button type="button" onClick={() => setShowConfirm("word")} disabled={exporting}
+              className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium transition disabled:opacity-50">
+              {exporting && showConfirm === "word" ? "..." : "Word"}
+            </button>
+            <button type="button" onClick={() => setShowConfirm("pptx")} disabled={exporting}
+              className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg font-medium transition disabled:opacity-50">
+              {exporting && showConfirm === "pptx" ? "..." : "PPTX"}
+            </button>
+          </div>
         </div>
+        {showConfirm && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowConfirm(null)}>
+            <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-bold text-gray-700 mb-2">Confirmar exportacion</h3>
+              <p className="text-xs text-gray-500 mb-1">
+                Se utilizara <strong>{showConfirm === "pdf" ? CREDIT_COSTS.EXPORT_PDF : showConfirm === "word" ? CREDIT_COSTS.EXPORT_WORD : CREDIT_COSTS.GENERATE_PPTX} creditos</strong> para exportar en formato <strong>{showConfirm.toUpperCase()}</strong>.
+              </p>
+              <p className="text-[10px] text-amber-600 mb-4">Esta accion es irreversible y descontara creditos de tu plan.</p>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setShowConfirm(null)} className="text-xs px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">Cancelar</button>
+                <button onClick={() => handleExport(showConfirm)} disabled={exporting}
+                  className="text-xs px-4 py-2 bg-gradient-to-r from-purple-600 to-cyan-500 text-white rounded-lg font-semibold hover:opacity-90 disabled:opacity-50">
+                  {exporting ? "Exportando..." : "Confirmar y exportar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="p-6 flex justify-center">
           <div
             className="w-[210mm] min-h-[297mm] bg-white shadow-2xl border p-8 rounded-sm"

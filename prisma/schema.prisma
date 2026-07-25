@@ -16,6 +16,7 @@ model User {
   password      String?
   planType      String         @default("free")
   status        String         @default("active")
+  credits       Int            @default(100)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -23,6 +24,8 @@ model User {
   sessions      Session[]
   subscriptions Subscription[]
   planificaciones Planificacion[]
+  evaluaciones    Evaluacion[]
+  materiales      Material[]
 }
 
 model Account {
@@ -109,4 +112,38 @@ model Planificacion {
   @@index([userId])
   @@index([level])
   @@index([status])
+}
+
+model Evaluacion {
+  id        String   @id @default(cuid())
+  userId    String
+  nivel     String   @default("primaria")
+  area      String
+  tipo      String   // rubrica | lista_cotejo | examen
+  titulo    String
+  contenido String   // JSON del contenido generado
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tipo])
+}
+
+model Material {
+  id        String   @id @default(cuid())
+  userId    String
+  nivel     String   @default("primaria")
+  area      String
+  tipo      String   // ficha | lectura
+  titulo    String
+  contenido String   // JSON del contenido generado
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tipo])
 }

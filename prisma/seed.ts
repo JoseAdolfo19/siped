@@ -15,6 +15,7 @@ async function main() {
       password,
       planType: "admin",
       status: "active",
+      credits: 999999,
       subscriptions: {
         create: {
           planType: "admin",
@@ -35,6 +36,7 @@ async function main() {
       password,
       planType: "vip",
       status: "active",
+      credits: 999999,
       subscriptions: {
         create: {
           planType: "vip",
@@ -55,6 +57,7 @@ async function main() {
       password,
       planType: "free",
       status: "active",
+      credits: 100,
     },
   })
 

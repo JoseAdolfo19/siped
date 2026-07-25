@@ -7,8 +7,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!user || !isAdmin(user.planType)) return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   const body = await req.json()
   const data: any = {}
-  if (body.planType) data.planType = body.planType
-  if (body.status) data.status = body.status
+  if (body.planType != null) data.planType = body.planType
+  if (body.status != null) data.status = body.status
+  if (body.credits != null) data.credits = body.credits
   const updated = await prisma.user.update({ where: { id: params.id }, data })
   if (body.planType === "vip") {
     const existing = await prisma.subscription.findFirst({ where: { userId: params.id, planType: "vip", status: "active" } })
