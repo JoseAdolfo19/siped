@@ -1,43 +1,40 @@
-import NextAuth from "next-auth"
-import Google from "next-auth/providers/google"
-import Credentials from "next-auth/providers/credentials"
-import bcrypt from "bcryptjs"
-import { PrismaAdapter } from "@auth/prisma-adapter"
+import { createClient } from "./supabase/server"
 import { prisma } from "./prisma"
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma) as any,
-  session: { strategy: "jwt" },
-  pages: { signIn: "/login" },
-  providers: [
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
-    }),
-    Credentials({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null
-        const user = await prisma.user.findUnique({ where: { email: credentials.email as string } })
-        if (!user || !user.password) return null
-        const isValid = await bcrypt.compare(credentials.password as string, user.password)
-        if (!isValid) return null
-        return { id: user.id, email: user.email, name: user.name, image: user.image, planType: user.planType, status: user.status, credits: user.credits }
-      },
-    }),
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) { token.id = user.id; token.planType = (user as any).planType; token.status = (user as any).status; token.credits = (user as any).credits ?? 0 }
-      return token
+export interface SessionUser {
+  id: string
+  email: string
+  name?: string | null
+  image?: string | null
+  planType: string
+  status: string
+  credits: number
+}
+
+export interface Session {
+  user: SessionUser
+}
+
+export async function auth(): Promise<Session | null> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return null
+
+  const dbUser = await prisma.user.findUnique({ where: { email: user.email } })
+  if (!dbUser) return null
+
+  return {
+    user: {
+      id: dbUser.id,
+      email: dbUser.email,
+      name: dbUser.name,
+      image: dbUser.image,
+      planType: dbUser.planType,
+      status: dbUser.status,
+      credits: dbUser.credits,
     },
-    async session({ session, token }) {
-      if (session.user) { session.user.id = token.id as string; session.user.planType = token.planType as string; session.user.status = token.status as string; session.user.credits = token.credits as number }
-      return session
-    },
-  },
-})
+  }
+}
+
+export async function signIn() { throw new Error("Usa supabase.auth.signInWithPassword") }
+export async function signOut() { throw new Error("Usa supabase.auth.signOut en el cliente") }

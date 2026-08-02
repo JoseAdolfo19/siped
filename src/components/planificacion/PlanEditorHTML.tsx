@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useSession } from "@/lib/useSession"
 import { generarTemplate } from "@/lib/templates"
 import { CREDIT_COSTS } from "@/lib/credits"
 import RichTextEditor from "./RichTextEditor"

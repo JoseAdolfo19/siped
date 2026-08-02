@@ -1,7 +1,7 @@
 "use client"
 
 import { CreditAction } from "@/lib/credits"
-import { useSession } from "next-auth/react"
+import { useSession } from "@/lib/useSession"
 import { useEffect, useState } from "react"
 
 interface Props {

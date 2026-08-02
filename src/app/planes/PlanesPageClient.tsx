@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useSession } from "next-auth/react"
+import { useSession } from "@/lib/useSession"
 
 const planes = [
   { id: "free", label: "Free", price: 0, period: "", credits: 100, features: ["3 sesiones de aprendizaje", "3 evaluaciones", "100 créditos", "Exportación HTML", "Marca de agua en exportaciones"] },

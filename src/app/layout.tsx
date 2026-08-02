@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { SessionProvider } from "next-auth/react"
+import { SessionProvider } from "@/lib/useSession"
 import "./globals.css"
 import { Inter } from "next/font/google";
 
