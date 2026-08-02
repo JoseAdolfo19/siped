@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import puppeteer from "puppeteer"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
@@ -15,10 +14,22 @@ export async function POST(req: NextRequest) {
   if (user.credits < 5) return NextResponse.json({ error: "Créditos insuficientes", credits: user.credits, cost: 5 }, { status: 402 })
 
   try {
-    const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] })
+    const chromium = (await import("@sparticuz/chromium")).default
+    const puppeteer = (await import("puppeteer-core")).default
+
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    })
+
     const page = await browser.newPage()
     await page.setContent(html)
-    const pdf = await page.pdf({ format: "A4", margin: { top: "20mm", bottom: "20mm", left: "15mm", right: "15mm" }, printBackground: true })
+    const pdf = await page.pdf({
+      format: "A4",
+      margin: { top: "20mm", bottom: "20mm", left: "15mm", right: "15mm" },
+      printBackground: true,
+    })
     await browser.close()
 
     await prisma.user.update({ where: { email: session.user.email }, data: { credits: { decrement: 5 } } })
